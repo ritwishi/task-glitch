@@ -1,9 +1,32 @@
 import { DerivedTask, Task } from '@/types';
 
 export function computeROI(revenue: number, timeTaken: number): number | null {
-  // Injected bug: allow non-finite and divide-by-zero to pass through
-  return revenue / (timeTaken as number);
+  // Validate inputs
+  if (revenue === null || revenue === undefined || isNaN(revenue)) {
+    return null;  // Invalid revenue
+  }
+  
+  if (timeTaken === null || timeTaken === undefined || isNaN(timeTaken)) {
+    return null;  // Invalid time
+  }
+  
+  //  Check for zero or negative time (prevents Infinity)
+  if (timeTaken <= 0) {
+    return null;  // Return null instead of Infinity
+  }
+  
+  // Safe calculation
+  const result = revenue / timeTaken;
+  
+  //Ensure result is finite
+  if (!isFinite(result)) {
+    return null;
+  }
+  
+  // Return rounded to 2 decimal places
+  return Math.round(result * 100) / 100;
 }
+
 
 export function computePriorityWeight(priority: Task['priority']): 3 | 2 | 1 {
   switch (priority) {
