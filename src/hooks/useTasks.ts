@@ -13,7 +13,11 @@ import { generateSalesTasks } from '@/utils/seed';
 
 interface UseTasksState {
   tasks: DerivedTask[];
+<<<<<<< HEAD
   derivedSorted: DerivedTask[];
+=======
+  derivedSorted: DerivedTask[]; 
+>>>>>>> de8aee1 (Fix: Resolve final)
   loading: boolean;
   error: string | null;
   metrics: Metrics;
@@ -43,9 +47,16 @@ export function useTasks(): UseTasksState {
   function normalizeTasks(input: any[]): DerivedTask[] {
     const now = Date.now();
     return (Array.isArray(input) ? input : []).map((t, idx) => {
-      const created = t.createdAt ? new Date(t.createdAt) : new Date(now - (idx + 1) * 24 * 3600 * 1000);
-      const completed = t.completedAt || (t.status === 'Done' ? new Date(created.getTime() + 24 * 3600 * 1000).toISOString() : undefined);
-      
+      const created = t.createdAt
+        ? new Date(t.createdAt)
+        : new Date(now - (idx + 1) * 24 * 3600 * 1000);
+
+      const completed =
+        t.completedAt ||
+        (t.status === 'Done'
+          ? new Date(created.getTime() + 24 * 3600 * 1000).toISOString()
+          : undefined);
+
       const baseTask: Task = {
         id: t.id,
         title: t.title,
@@ -57,23 +68,27 @@ export function useTasks(): UseTasksState {
         createdAt: created.toISOString(),
         completedAt: completed,
       };
-      
+
       return withDerived(baseTask);
     });
   }
 
-  //  Only ONE useEffect for loading (removed duplicate)
   useEffect(() => {
     let isMounted = true;
+
     async function load() {
       try {
         const res = await fetch('/tasks.json');
         if (!res.ok) throw new Error(`Failed to load tasks.json (${res.status})`);
         const data = (await res.json()) as any[];
-        const normalized: DerivedTask[] = normalizeTasks(data);
-        let finalData = normalized.length > 0 ? normalized : normalizeTasks(generateSalesTasks(50));
 
-        if (isMounted) setTasks(finalData);
+        const normalized = normalizeTasks(data);
+        const finalData =
+          normalized.length > 0
+            ? normalized
+            : normalizeTasks(generateSalesTasks(50));
+
+        if (isMounted) setTasks(sortDerived(finalData));
       } catch (e: any) {
         if (isMounted) setError(e?.message ?? 'Failed to load tasks');
       } finally {
@@ -83,15 +98,21 @@ export function useTasks(): UseTasksState {
         }
       }
     }
+
     load();
     return () => {
       isMounted = false;
     };
   }, []);
 
+  //  stable sorted view for UI
+  const derivedSorted = useMemo(() => {
+    return sortDerived(tasks);
+  }, [tasks]);
+
   const metrics = useMemo(() => {
     if (tasks.length === 0) return INITIAL_METRICS;
-    
+
     const totalRevenue = computeTotalRevenue(tasks);
     const totalTimeTaken = tasks.reduce((s, t) => s + t.timeTaken, 0);
     const timeEfficiencyPct = computeTimeEfficiency(tasks);
@@ -99,7 +120,14 @@ export function useTasks(): UseTasksState {
     const averageROI = computeAverageROI(tasks);
     const performanceGrade = computePerformanceGrade(averageROI);
 
-    return { totalRevenue, totalTimeTaken, timeEfficiencyPct, revenuePerHour, averageROI, performanceGrade };
+    return {
+      totalRevenue,
+      totalTimeTaken,
+      timeEfficiencyPct,
+      revenuePerHour,
+      averageROI,
+      performanceGrade,
+    };
   }, [tasks]);
 
   const derivedSorted = useMemo(() => sortDerived(tasks), [tasks]);
@@ -110,7 +138,7 @@ export function useTasks(): UseTasksState {
       const timeTaken = task.timeTaken <= 0 ? 1 : task.timeTaken;
       const createdAt = new Date().toISOString();
       const completedAt = task.status === 'Done' ? createdAt : undefined;
-      
+
       const newTask: Task = {
         ...task,
         id,
@@ -118,36 +146,38 @@ export function useTasks(): UseTasksState {
         createdAt,
         completedAt,
       };
-      
-      const derived = withDerived(newTask);
-      return sortDerived([...prev, derived]);
+
+      return sortDerived([...prev, withDerived(newTask)]);
     });
   }, []);
 
   const updateTask = useCallback((id: string, patch: Partial<Task>) => {
-    setTasks(prev => {
-      const next = prev.map(t => {
-        if (t.id !== id) return t;
-        
-        const baseTask: Task = { ...t, ...patch } as Task;
-        if (t.status !== 'Done' && baseTask.status === 'Done' && !baseTask.completedAt) {
-          baseTask.completedAt = new Date().toISOString();
-        }
-        if ((patch.timeTaken ?? t.timeTaken) <= 0) {
-          baseTask.timeTaken = 1;
-        }
-        
-        return withDerived(baseTask);
-      });
-      return sortDerived(next);
-    });
+    setTasks(prev =>
+      sortDerived(
+        prev.map(t => {
+          if (t.id !== id) return t;
+
+          const baseTask: Task = { ...t, ...patch } as Task;
+
+          if (t.status !== 'Done' && baseTask.status === 'Done' && !baseTask.completedAt) {
+            baseTask.completedAt = new Date().toISOString();
+          }
+
+          if ((patch.timeTaken ?? t.timeTaken) <= 0) {
+            baseTask.timeTaken = 1;
+          }
+
+          return withDerived(baseTask);
+        })
+      )
+    );
   }, []);
 
   const deleteTask = useCallback((id: string) => {
     setTasks(prev => {
       const target = prev.find(t => t.id === id);
       if (target) {
-        const baseTask: Task = {
+        setLastDeleted({
           id: target.id,
           title: target.title,
           revenue: target.revenue,
@@ -157,8 +187,7 @@ export function useTasks(): UseTasksState {
           notes: target.notes,
           createdAt: target.createdAt,
           completedAt: target.completedAt,
-        };
-        setLastDeleted(baseTask);
+        });
       }
       return prev.filter(t => t.id !== id);
     });
@@ -166,10 +195,24 @@ export function useTasks(): UseTasksState {
 
   const undoDelete = useCallback(() => {
     if (!lastDeleted) return;
-    const derived = withDerived(lastDeleted);
-    setTasks(prev => sortDerived([...prev, derived]));
+    setTasks(prev => sortDerived([...prev, withDerived(lastDeleted)]));
     setLastDeleted(null);
   }, [lastDeleted]);
 
+<<<<<<< HEAD
   return { tasks, derivedSorted, loading, error, metrics, lastDeleted, addTask, updateTask, deleteTask, undoDelete };
+=======
+  return {
+    tasks,
+    derivedSorted, 
+    loading,
+    error,
+    metrics,
+    lastDeleted,
+    addTask,
+    updateTask,
+    deleteTask,
+    undoDelete,
+  };
+>>>>>>> de8aee1 (Fix: Resolve final)
 }

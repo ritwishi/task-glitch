@@ -73,6 +73,7 @@ export default function TaskForm({
   const revenueNum = typeof revenue === "number" ? revenue : Number(revenue);
   const timeNum = typeof timeTaken === "number" ? timeTaken : Number(timeTaken);
 
+
   const canSubmit =
     !!title.trim() &&
     !duplicateTitle &&
