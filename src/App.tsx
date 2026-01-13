@@ -35,7 +35,7 @@ function AppContent() {
     loading,
     error,
     metrics,
-    derivedSorted,
+    tasks,
     addTask,
     updateTask,
     deleteTask,
