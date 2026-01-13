@@ -1,10 +1,12 @@
 import { Task } from '@/types';
 
 const priorities: Task['priority'][] = ['High', 'Medium', 'Low'];
+
 const statuses: Task['status'][] = ['Todo', 'In Progress', 'Done'];
 
 export function generateSalesTasks(count: number): Task[] {
   const tasks: Task[] = [];
+
   const titles = [
     'Prospect outreach',
     'Demo scheduling',
@@ -59,9 +61,17 @@ export function generateSalesTasks(count: number): Task[] {
   ];
 
   const now = Date.now();
+
   for (let i = 0; i < count; i++) {
-    const title = titles[i % titles.length];
-    const id = `t-${2001 + i}`;
+    //  Use unique title from the array, cycling through them
+    // If count > titles.length, each task still gets a unique title + number
+    const titleIndex = i % titles.length;
+    const baseTitle = titles[titleIndex];
+    
+    // Make title unique by including the actual index number
+    const title = `${baseTitle} #${i + 1}`;
+    
+    const id = `t-${2001 + i}`; // Each task gets unique ID
     const priority = priorities[i % priorities.length];
     const status = statuses[(i + 1) % statuses.length];
     const timeTaken = 1 + ((i * 3) % 10); // 1..10 hours
@@ -70,9 +80,9 @@ export function generateSalesTasks(count: number): Task[] {
     const revenue = Math.round((revenueBase + (i % 5) * 40) * multiplier);
     const createdAt = new Date(now - (i * 36 + (i % 7) * 12) * 60 * 60 * 1000).toISOString();
     const completedAt = status === 'Done' ? new Date(new Date(createdAt).getTime() + ((i % 10) + 1) * 24 * 3600 * 1000).toISOString() : undefined;
-    tasks.push({ id, title: `${title} #${i + 1}`, revenue, timeTaken, priority, status, createdAt, completedAt });
+
+    tasks.push({ id, title, revenue, timeTaken, priority, status, createdAt, completedAt });
   }
+
   return tasks;
 }
-
-

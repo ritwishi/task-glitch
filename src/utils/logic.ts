@@ -1,24 +1,26 @@
 import { DerivedTask, Task } from '@/types';
 
 export function computeROI(revenue: number, timeTaken: number): number | null {
-  // Validate inputs
+  // FIX BUG 5: Add validation to prevent Infinity and NaN
+  
+  // Check for invalid inputs
   if (revenue === null || revenue === undefined || isNaN(revenue)) {
-    return null;  // Invalid revenue
+    return null;
   }
   
   if (timeTaken === null || timeTaken === undefined || isNaN(timeTaken)) {
-    return null;  // Invalid time
+    return null;
   }
   
-  //  Check for zero or negative time (prevents Infinity)
+  // CRITICAL: Check for zero or negative time (prevents Infinity)
   if (timeTaken <= 0) {
-    return null;  // Return null instead of Infinity
+    return null;
   }
   
   // Safe calculation
   const result = revenue / timeTaken;
   
-  //Ensure result is finite
+  // Ensure result is finite
   if (!isFinite(result)) {
     return null;
   }
@@ -26,7 +28,6 @@ export function computeROI(revenue: number, timeTaken: number): number | null {
   // Return rounded to 2 decimal places
   return Math.round(result * 100) / 100;
 }
-
 
 export function computePriorityWeight(priority: Task['priority']): 3 | 2 | 1 {
   switch (priority) {
@@ -51,38 +52,40 @@ export function sortTasks(tasks: ReadonlyArray<DerivedTask>): DerivedTask[] {
   return [...tasks].sort((a, b) => {
     const aROI = a.roi ?? -Infinity;
     const bROI = b.roi ?? -Infinity;
-
+    
     // Primary: Sort by ROI (descending)
     if (bROI !== aROI) return bROI - aROI;
-
+    
     // Secondary: Sort by Priority (High > Medium > Low)
     if (b.priorityWeight !== a.priorityWeight) return b.priorityWeight - a.priorityWeight;
-
+    
+    // FIX BUG 3: Replace Math.random() with deterministic tie-breaker
+    // Tertiary: Sort alphabetically by title for stable, deterministic ordering
     return a.title.localeCompare(b.title);
   });
 }
 
-export function computeTotalRevenue(tasks: ReadonlyArray<Task>): number {
+export function computeTotalRevenue(tasks: ReadonlyArray<DerivedTask>): number {
   return tasks.filter(t => t.status === 'Done').reduce((sum, t) => sum + t.revenue, 0);
 }
 
-export function computeTotalTimeTaken(tasks: ReadonlyArray<Task>): number {
+export function computeTotalTimeTaken(tasks: ReadonlyArray<DerivedTask>): number {
   return tasks.reduce((sum, t) => sum + t.timeTaken, 0);
 }
 
-export function computeTimeEfficiency(tasks: ReadonlyArray<Task>): number {
+export function computeTimeEfficiency(tasks: ReadonlyArray<DerivedTask>): number {
   if (tasks.length === 0) return 0;
   const done = tasks.filter(t => t.status === 'Done').length;
   return (done / tasks.length) * 100;
 }
 
-export function computeRevenuePerHour(tasks: ReadonlyArray<Task>): number {
+export function computeRevenuePerHour(tasks: ReadonlyArray<DerivedTask>): number {
   const revenue = computeTotalRevenue(tasks);
   const time = computeTotalTimeTaken(tasks);
   return time > 0 ? revenue / time : 0;
 }
 
-export function computeAverageROI(tasks: ReadonlyArray<Task>): number {
+export function computeAverageROI(tasks: ReadonlyArray<DerivedTask>): number {
   const rois = tasks
     .map(t => computeROI(t.revenue, t.timeTaken))
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
@@ -97,8 +100,10 @@ export function computePerformanceGrade(avgROI: number): 'Excellent' | 'Good' | 
 }
 
 // ---- Advanced analytics ----
+
 export type FunnelCounts = { todo: number; inProgress: number; done: number; conversionTodoToInProgress: number; conversionInProgressToDone: number };
-export function computeFunnel(tasks: ReadonlyArray<Task>): FunnelCounts {
+
+export function computeFunnel(tasks: ReadonlyArray<DerivedTask>): FunnelCounts {
   const todo = tasks.filter(t => t.status === 'Todo').length;
   const inProgress = tasks.filter(t => t.status === 'In Progress').length;
   const done = tasks.filter(t => t.status === 'Done').length;
@@ -114,7 +119,7 @@ export function daysBetween(aISO: string, bISO: string): number {
   return Math.max(0, Math.round((b - a) / (24 * 3600 * 1000)));
 }
 
-export function computeVelocityByPriority(tasks: ReadonlyArray<Task>): Record<Task['priority'], { avgDays: number; medianDays: number }> {
+export function computeVelocityByPriority(tasks: ReadonlyArray<DerivedTask>): Record<Task['priority'], { avgDays: number; medianDays: number }> {
   const groups: Record<Task['priority'], number[]> = { High: [], Medium: [], Low: [] };
   tasks.forEach(t => {
     if (t.completedAt) groups[t.priority].push(daysBetween(t.createdAt, t.completedAt));
@@ -129,8 +134,8 @@ export function computeVelocityByPriority(tasks: ReadonlyArray<Task>): Record<Ta
   return stats;
 }
 
-export function computeThroughputByWeek(tasks: ReadonlyArray<Task>): Array<{ week: string; count: number; revenue: number }> {
-  const byWeek = new Map<string, { count: number; revenue: number }>();
+export function computeThroughputByWeek(tasks: ReadonlyArray<DerivedTask>): Array<{ week: string; count: number; revenue: number }> {
+  const byWeek = new Map();
   tasks.forEach(t => {
     if (!t.completedAt) return;
     const d = new Date(t.completedAt);
@@ -152,7 +157,7 @@ function getWeekNumber(d: Date): number {
   return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
 }
 
-export function computeWeightedPipeline(tasks: ReadonlyArray<Task>): number {
+export function computeWeightedPipeline(tasks: ReadonlyArray<DerivedTask>): number {
   const p = { 'Todo': 0.1, 'In Progress': 0.5, 'Done': 1 } as const;
   return tasks.reduce((s, t) => s + t.revenue * (p[t.status] as number), 0);
 }
@@ -177,9 +182,9 @@ export function computeForecast(weekly: Array<{ week: string; revenue: number }>
   return result;
 }
 
-export function computeCohortRevenue(tasks: ReadonlyArray<Task>): Array<{ week: string; priority: Task['priority']; revenue: number }> {
+export function computeCohortRevenue(tasks: ReadonlyArray<DerivedTask>): Array<{ week: string; priority: Task['priority']; revenue: number }> {
   const rows: Array<{ week: string; priority: Task['priority']; revenue: number }> = [];
-  const byKey = new Map<string, number>();
+  const byKey = new Map();
   tasks.forEach(t => {
     const d = new Date(t.createdAt);
     const key = `${d.getUTCFullYear()}-W${getWeekNumber(d)}|${t.priority}`;
@@ -191,5 +196,3 @@ export function computeCohortRevenue(tasks: ReadonlyArray<Task>): Array<{ week: 
   });
   return rows.sort((a, b) => a.week.localeCompare(b.week));
 }
-
-
