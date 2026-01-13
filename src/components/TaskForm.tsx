@@ -61,7 +61,7 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     return others.map(t => t.toLowerCase()).includes(current);
   }, [title, existingTitles, initial]);
 
-  //  Add missing variable declarations
+  // Add these variable declarations
   const revenueNum = typeof revenue === 'number' ? revenue : Number(revenue);
   const timeNum = typeof timeTaken === 'number' ? timeTaken : Number(timeTaken);
 
@@ -76,9 +76,8 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
     !!status;
 
   const handleSubmit = () => {
-    const safeTime = timeNum > 0 ? timeNum : 1; // auto-correct
+    const safeTime = timeNum > 0 ? timeNum : 1;
 
-    // ✅ FIX: Include createdAt and completedAt
     const payload: Omit<Task, 'id'> & { id?: string } = {
       title: title.trim(),
       revenue: revenueNum || 0,
