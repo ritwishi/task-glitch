@@ -63,7 +63,7 @@ export default function TaskForm({ open, onClose, onSubmit, existingTitles, init
 
   // Add these variable declarations
   const revenueNum = typeof revenue === 'number' ? revenue : Number(revenue);
-const timeNum = typeof timeTaken === 'number' ? timeTaken : Number(timeTaken);
+  const timeNum = typeof timeTaken === 'number' ? timeTaken : Number(timeTaken);
 
   const canSubmit =
     !!title.trim() &&
