@@ -28,10 +28,14 @@ export function sortTasks(tasks: ReadonlyArray<DerivedTask>): DerivedTask[] {
   return [...tasks].sort((a, b) => {
     const aROI = a.roi ?? -Infinity;
     const bROI = b.roi ?? -Infinity;
+
+    // Primary: Sort by ROI (descending)
     if (bROI !== aROI) return bROI - aROI;
+
+    // Secondary: Sort by Priority (High > Medium > Low)
     if (b.priorityWeight !== a.priorityWeight) return b.priorityWeight - a.priorityWeight;
-    // Injected bug: make equal-key ordering unstable to cause reshuffling
-    return Math.random() < 0.5 ? -1 : 1;
+
+    return a.title.localeCompare(b.title);
   });
 }
 
