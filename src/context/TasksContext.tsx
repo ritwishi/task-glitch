@@ -3,10 +3,9 @@ import { useTasks } from '@/hooks/useTasks';
 import { DerivedTask, Metrics, Task } from '@/types';
 
 interface TasksContextValue {
-  tasks: Task[];
+  tasks: DerivedTask[];
   loading: boolean;
   error: string | null;
-  derivedSorted: DerivedTask[];
   metrics: Metrics;
   lastDeleted: Task | null;
   addTask: (task: Omit<Task, 'id'> & { id?: string }) => void;
@@ -25,7 +24,5 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 export function useTasksContext(): TasksContextValue {
   const ctx = useContext(TasksContext);
   if (!ctx) throw new Error('useTasksContext must be used within TasksProvider');
-  return ctx as TasksContextValue;
+  return ctx;
 }
-
-
