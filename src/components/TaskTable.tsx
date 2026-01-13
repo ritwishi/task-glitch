@@ -7,6 +7,7 @@ import { DerivedTask, Task } from '@/types';
 import TaskForm from '@/components/TaskForm';
 import TaskDetailsDialog from '@/components/TaskDetailsDialog';
 
+
 interface Props {
   tasks: DerivedTask[];
   onAdd: (payload: Omit<Task, 'id'>) => void;
@@ -14,21 +15,26 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
+
 export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [details, setDetails] = useState<Task | null>(null);
 
+
   const existingTitles = useMemo(() => tasks.map(t => t.title), [tasks]);
+
 
   const handleAddClick = () => {
     setEditing(null);
     setOpenForm(true);
   };
+
   const handleEditClick = (task: Task) => {
     setEditing(task);
     setOpenForm(true);
   };
+
 
   const handleSubmit = (value: Omit<Task, 'id'> & { id?: string }) => {
     if (value.id) {
@@ -38,6 +44,7 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
       onAdd(value as Omit<Task, 'id'>);
     }
   };
+
 
   return (
     <Card>
@@ -66,14 +73,14 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                     <Stack spacing={0.5}>
                       <Typography fontWeight={600}>{t.title}</Typography>
                       {t.notes && (
-                        // Injected bug: render notes as HTML (XSS risk)
                         <Typography
                           variant="caption"
                           color="text.secondary"
                           noWrap
                           title={t.notes}
-                          dangerouslySetInnerHTML={{ __html: t.notes as unknown as string }}
-                        />
+                        >
+                          {t.notes}
+                        </Typography>
                       )}
                     </Stack>
                   </TableCell>
@@ -85,12 +92,25 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                   <TableCell align="right">
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
                       <Tooltip title="Edit">
-                        <IconButton onClick={() => handleEditClick(t)} size="small">
+                        <IconButton 
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();  // FIX BUG 4: Stop event bubbling to row
+                            handleEditClick(t);
+                          }}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton onClick={() => onDelete(t.id)} size="small" color="error">
+                        <IconButton 
+                          size="small" 
+                          color="error"
+                          onClick={(e) => {
+                            e.stopPropagation();  // FIX BUG 4: Stop event bubbling to row
+                            onDelete(t.id);
+                          }}
+                        >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -120,5 +140,3 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
     </Card>
   );
 }
-
-
