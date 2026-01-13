@@ -13,11 +13,7 @@ import { generateSalesTasks } from '@/utils/seed';
 
 interface UseTasksState {
   tasks: DerivedTask[];
-<<<<<<< HEAD
   derivedSorted: DerivedTask[];
-=======
-  derivedSorted: DerivedTask[]; 
->>>>>>> de8aee1 (Fix: Resolve final)
   loading: boolean;
   error: string | null;
   metrics: Metrics;
@@ -105,7 +101,7 @@ export function useTasks(): UseTasksState {
     };
   }, []);
 
-  //  stable sorted view for UI
+  // ✅ single, stable sorted list
   const derivedSorted = useMemo(() => {
     return sortDerived(tasks);
   }, [tasks]);
@@ -130,26 +126,27 @@ export function useTasks(): UseTasksState {
     };
   }, [tasks]);
 
-  const derivedSorted = useMemo(() => sortDerived(tasks), [tasks]);
+  const addTask = useCallback(
+    (task: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => {
+      setTasks(prev => {
+        const id = task.id ?? crypto.randomUUID();
+        const timeTaken = task.timeTaken <= 0 ? 1 : task.timeTaken;
+        const createdAt = new Date().toISOString();
+        const completedAt = task.status === 'Done' ? createdAt : undefined;
 
-  const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => {
-    setTasks(prev => {
-      const id = task.id ?? crypto.randomUUID();
-      const timeTaken = task.timeTaken <= 0 ? 1 : task.timeTaken;
-      const createdAt = new Date().toISOString();
-      const completedAt = task.status === 'Done' ? createdAt : undefined;
+        const newTask: Task = {
+          ...task,
+          id,
+          timeTaken,
+          createdAt,
+          completedAt,
+        };
 
-      const newTask: Task = {
-        ...task,
-        id,
-        timeTaken,
-        createdAt,
-        completedAt,
-      };
-
-      return sortDerived([...prev, withDerived(newTask)]);
-    });
-  }, []);
+        return sortDerived([...prev, withDerived(newTask)]);
+      });
+    },
+    []
+  );
 
   const updateTask = useCallback((id: string, patch: Partial<Task>) => {
     setTasks(prev =>
@@ -157,7 +154,7 @@ export function useTasks(): UseTasksState {
         prev.map(t => {
           if (t.id !== id) return t;
 
-          const baseTask: Task = { ...t, ...patch } as Task;
+          const baseTask: Task = { ...t, ...patch };
 
           if (t.status !== 'Done' && baseTask.status === 'Done' && !baseTask.completedAt) {
             baseTask.completedAt = new Date().toISOString();
@@ -199,12 +196,9 @@ export function useTasks(): UseTasksState {
     setLastDeleted(null);
   }, [lastDeleted]);
 
-<<<<<<< HEAD
-  return { tasks, derivedSorted, loading, error, metrics, lastDeleted, addTask, updateTask, deleteTask, undoDelete };
-=======
   return {
     tasks,
-    derivedSorted, 
+    derivedSorted,
     loading,
     error,
     metrics,
@@ -214,5 +208,4 @@ export function useTasks(): UseTasksState {
     deleteTask,
     undoDelete,
   };
->>>>>>> de8aee1 (Fix: Resolve final)
 }
