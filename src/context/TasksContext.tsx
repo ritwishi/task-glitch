@@ -1,5 +1,7 @@
 import { createContext, useContext, ReactNode } from 'react';
+
 import { useTasks } from '@/hooks/useTasks';
+
 import { DerivedTask, Metrics, Task } from '@/types';
 
 interface TasksContextValue {
@@ -7,8 +9,9 @@ interface TasksContextValue {
   loading: boolean;
   error: string | null;
   metrics: Metrics;
+  derivedSorted: DerivedTask[];
   lastDeleted: Task | null;
-  addTask: (task: Omit<Task, 'id'> & { id?: string }) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   undoDelete: () => void;
@@ -18,7 +21,11 @@ const TasksContext = createContext<TasksContextValue | undefined>(undefined);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
   const value = useTasks();
-  return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
+  return (
+    <TasksContext.Provider value={value}>
+      {children}
+    </TasksContext.Provider>
+  );
 }
 
 export function useTasksContext(): TasksContextValue {
