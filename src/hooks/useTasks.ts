@@ -88,10 +88,7 @@ export function useTasks(): UseTasksState {
       } catch (e: any) {
         if (isMounted) setError(e?.message ?? 'Failed to load tasks');
       } finally {
-        if (isMounted) {
-          setLoading(false);
-          fetchedRef.current = true;
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -101,10 +98,7 @@ export function useTasks(): UseTasksState {
     };
   }, []);
 
-  // ✅ single, stable sorted list
-  const derivedSorted = useMemo(() => {
-    return sortDerived(tasks);
-  }, [tasks]);
+  const derivedSorted = useMemo(() => sortDerived(tasks), [tasks]);
 
   const metrics = useMemo(() => {
     if (tasks.length === 0) return INITIAL_METRICS;
@@ -126,66 +120,36 @@ export function useTasks(): UseTasksState {
     };
   }, [tasks]);
 
-  const addTask = useCallback(
-    (task: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => {
-      setTasks(prev => {
-        const id = task.id ?? crypto.randomUUID();
-        const timeTaken = task.timeTaken <= 0 ? 1 : task.timeTaken;
-        const createdAt = new Date().toISOString();
-        const completedAt = task.status === 'Done' ? createdAt : undefined;
-
-        const newTask: Task = {
-          ...task,
-          id,
-          timeTaken,
-          createdAt,
-          completedAt,
-        };
-
-        return sortDerived([...prev, withDerived(newTask)]);
-      });
-    },
-    []
-  );
+  const addTask = useCallback((task: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => {
+    setTasks(prev =>
+      sortDerived([...prev, withDerived({
+        ...task,
+        id: task.id ?? crypto.randomUUID(),
+        timeTaken: task.timeTaken <= 0 ? 1 : task.timeTaken,
+        createdAt: new Date().toISOString(),
+        completedAt: task.status === 'Done' ? new Date().toISOString() : undefined,
+      })])
+    );
+  }, []);
 
   const updateTask = useCallback((id: string, patch: Partial<Task>) => {
     setTasks(prev =>
-      sortDerived(
-        prev.map(t => {
-          if (t.id !== id) return t;
-
-          const baseTask: Task = { ...t, ...patch };
-
-          if (t.status !== 'Done' && baseTask.status === 'Done' && !baseTask.completedAt) {
-            baseTask.completedAt = new Date().toISOString();
-          }
-
-          if ((patch.timeTaken ?? t.timeTaken) <= 0) {
-            baseTask.timeTaken = 1;
-          }
-
-          return withDerived(baseTask);
-        })
-      )
+      sortDerived(prev.map(t => {
+        if (t.id !== id) return t;
+        const base: Task = { ...t, ...patch };
+        if (t.status !== 'Done' && base.status === 'Done' && !base.completedAt) {
+          base.completedAt = new Date().toISOString();
+        }
+        if ((patch.timeTaken ?? t.timeTaken) <= 0) base.timeTaken = 1;
+        return withDerived(base);
+      }))
     );
   }, []);
 
   const deleteTask = useCallback((id: string) => {
     setTasks(prev => {
       const target = prev.find(t => t.id === id);
-      if (target) {
-        setLastDeleted({
-          id: target.id,
-          title: target.title,
-          revenue: target.revenue,
-          timeTaken: target.timeTaken,
-          priority: target.priority,
-          status: target.status,
-          notes: target.notes,
-          createdAt: target.createdAt,
-          completedAt: target.completedAt,
-        });
-      }
+      if (target) setLastDeleted({ ...target });
       return prev.filter(t => t.id !== id);
     });
   }, []);

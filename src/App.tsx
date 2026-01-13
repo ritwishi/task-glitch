@@ -11,17 +11,19 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useCallback, useMemo, useState } from "react";
+
 import MetricsBar from "@/components/MetricsBar";
 import TaskTable from "@/components/TaskTable";
 import UndoSnackbar from "@/components/UndoSnackbar";
-import { useCallback, useMemo, useState } from "react";
-import { UserProvider, useUser } from "@/context/UserContext";
-import { TasksProvider, useTasksContext } from "@/context/TasksContext";
 import ChartsDashboard from "@/components/ChartsDashboard";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import ActivityLog, { ActivityItem } from "@/components/ActivityLog";
+
+import { UserProvider, useUser } from "@/context/UserContext";
+import { TasksProvider, useTasksContext } from "@/context/TasksContext";
+
 import { downloadCSV, toCSV } from "@/utils/csv";
-import type { Task } from "@/types";
 import {
   computeAverageROI,
   computePerformanceGrade,
@@ -30,24 +32,30 @@ import {
   computeTotalRevenue,
 } from "@/utils/logic";
 
+import type { Task } from "@/types";
+
 function AppContent() {
   const {
     loading,
     error,
-    metrics,
     tasks,
+    derivedSorted,
     addTask,
     updateTask,
     deleteTask,
     undoDelete,
     lastDeleted,
   } = useTasksContext();
-  const handleCloseUndo = () => {};
+
+  const { user } = useUser();
+
   const [q, setQ] = useState("");
   const [fStatus, setFStatus] = useState<string>("All");
   const [fPriority, setFPriority] = useState<string>("All");
-  const { user } = useUser();
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+
+  const handleCloseUndo = () => {};
+
   const createActivity = useCallback(
     (type: ActivityItem["type"], summary: string): ActivityItem => ({
       id:
@@ -79,6 +87,7 @@ function AppContent() {
     },
     [addTask, createActivity]
   );
+
   const handleUpdate = useCallback(
     (id: string, patch: Partial<Task>) => {
       updateTask(id, patch);
@@ -91,6 +100,7 @@ function AppContent() {
     },
     [updateTask, createActivity]
   );
+
   const handleDelete = useCallback(
     (id: string) => {
       deleteTask(id);
@@ -100,21 +110,20 @@ function AppContent() {
     },
     [deleteTask, createActivity]
   );
+
   const handleUndo = useCallback(() => {
     undoDelete();
     setActivity((prev) =>
       [createActivity("undo", "Undo delete"), ...prev].slice(0, 50)
     );
   }, [undoDelete, createActivity]);
+
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: "background.default" }}>
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
         <Stack spacing={3}>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-          >
+          {/* Header */}
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography variant="h3" fontWeight={700} gutterBottom>
                 TaskGlitch
@@ -133,22 +142,26 @@ function AppContent() {
               >
                 Export CSV
               </Button>
-              <Avatar sx={{ width: 40, height: 40 }}>
-                {user.name.charAt(0)}
-              </Avatar>
+              <Avatar>{user.name.charAt(0)}</Avatar>
             </Stack>
           </Stack>
+
           {loading && (
             <Stack alignItems="center" py={6}>
               <CircularProgress />
             </Stack>
           )}
+
           {error && <Alert severity="error">{error}</Alert>}
+
           {!loading && !error && (
             <MetricsBar
               metricsOverride={{
                 totalRevenue: computeTotalRevenue(filtered),
-                totalTimeTaken: filtered.reduce((s, t) => s + t.timeTaken, 0),
+                totalTimeTaken: filtered.reduce<number>(
+                  (s, t) => s + t.timeTaken,
+                  0
+                ),
                 timeEfficiencyPct: computeTimeEfficiency(filtered),
                 revenuePerHour: computeRevenuePerHour(filtered),
                 averageROI: computeAverageROI(filtered),
@@ -158,12 +171,9 @@ function AppContent() {
               }}
             />
           )}
+
           {!loading && !error && (
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              alignItems={{ xs: "stretch", sm: "center" }}
-            >
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 placeholder="Search by title"
                 value={q}
@@ -173,7 +183,6 @@ function AppContent() {
               <Select
                 value={fStatus}
                 onChange={(e) => setFStatus(e.target.value)}
-                displayEmpty
                 sx={{ minWidth: 180 }}
               >
                 <MenuItem value="All">All Statuses</MenuItem>
@@ -184,7 +193,6 @@ function AppContent() {
               <Select
                 value={fPriority}
                 onChange={(e) => setFPriority(e.target.value)}
-                displayEmpty
                 sx={{ minWidth: 180 }}
               >
                 <MenuItem value="All">All Priorities</MenuItem>
@@ -194,6 +202,7 @@ function AppContent() {
               </Select>
             </Stack>
           )}
+
           {!loading && !error && (
             <TaskTable
               tasks={filtered}
@@ -202,9 +211,11 @@ function AppContent() {
               onDelete={handleDelete}
             />
           )}
+
           {!loading && !error && <ChartsDashboard tasks={filtered} />}
           {!loading && !error && <AnalyticsDashboard tasks={filtered} />}
           {!loading && !error && <ActivityLog items={activity} />}
+
           <UndoSnackbar
             open={!!lastDeleted}
             onClose={handleCloseUndo}
